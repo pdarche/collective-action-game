@@ -2,6 +2,8 @@ import { Meteor } from 'meteor/meteor';
 
 const points = new Meteor.Collection('userStates');
 const users = new Meteor.Collection('users');
+const goals = new Meteor.Collection('goals');
+const problems = new Meteor.Collection('problems');
 
 Meteor.publish('userStateSubscription', () => {
   return points.find()
@@ -11,6 +13,13 @@ Meteor.publish('usersSubscription', () => {
   return users.find();
 });
 
+Meteor.publish('goalsSubscription', () => {
+  return goals.find();
+});
+
+Meteor.publish('problemsSubscription', () => {
+  return problems.find();
+});
 
 Meteor.onConnection((conn) => {
   // Add the user when the connection opens
@@ -20,7 +29,6 @@ Meteor.onConnection((conn) => {
     users.remove({id: conn.id})
   });
 });
-
 
 Meteor.methods({
   'clear': () => { 
@@ -34,5 +42,13 @@ Meteor.methods({
 
 Meteor.startup(() => {
   // code to run on server at startup
+  goal = goals.find({}).count()
+  if (!goal) {
+    goals.insert({x: 500, y: 100, r: 200})
+  }
+  problem = problems.find({}).count()
+  if (!problem) {
+    problems.insert({x: 500, y: 500, r: 25})
+  }
 });
 

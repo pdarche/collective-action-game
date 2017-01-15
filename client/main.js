@@ -1,16 +1,23 @@
 import { Template } from 'meteor/templating';
 import { ReactiveVar } from 'meteor/reactive-var';
 import { Session } from 'meteor/session';
+// import { Victor } from 'victor';
+var Victor = require('victor');
 import * as d3 from 'd3';
 
 import './main.html';
 
 const points = new Meteor.Collection('userStates');
 const users = new Meteor.Collection('users');
+const goals = new Meteor.Collection('goals');
+const problems = new Meteor.Collection('problems');
+
 
 Deps.autorun(() => {
   Meteor.subscribe('userStateSubscription');
   Meteor.subscribe('usersSubscription');
+  Meteor.subscribe('goalsStateSubscription');
+  Meteor.subscribe('problemsSubscription');
 });
 
 
@@ -18,11 +25,14 @@ Meteor.startup(() => {
   let canvas = new Canvas();
 
   Deps.autorun(() => {
-    // let data = points.find({}, {sort: {dt: -1}, limit: 1}).fetch();
     let data = users.find({state: {$exists: true}}).fetch();
+    let problem = problems.find({}, {limit: 1}).fetch();
+    let goal = goals.find({}, {limit: 1}).fetch();
 
     $('h2').hide();
     if (canvas) {
+      canvas.drawGoal(goal);
+      canvas.drawProblem(problem);
       canvas.draw(data);
     }
   });
@@ -39,6 +49,10 @@ Template.canvas.events({
   },
   'mousemove': function (event) {
     markPoint();
+    if (Session.get('draw')) {
+      contribute(event);
+      checkProblem(event);
+    }
   }
 });
 
@@ -46,13 +60,11 @@ Template.drawingSurface.events({
   'click input': (event) => {
     Meteor.call('clear', () => {
       // canvas.clear();
-      console.log('clearing');
     });
   }
 });
 
-
-var markPoint = function() {
+const markPoint = function() {
   let offset = $('#canvas').offset();
   let connId = Meteor.default_connection._lastSessionId
   let user = users.findOne({id: connId})
@@ -63,14 +75,42 @@ var markPoint = function() {
     dt: new Date(),
     c: Session.get('draw')
   }
-  users.update({_id: user._id}, {$set: {state: state}})
-  points.insert(state)
+  users.update({_id: user._id}, {$set: {state: state}});
+  points.insert(state);
+}
+
+const contribute = function(event) { 
+  let offset = $('#canvas').offset();
+  let problem = problems.findOne({}); 
+  let userPos = Victor(
+    (event.pageX - offset.left), 
+    (event.pageY - offset.top) 
+  );
+  let problemPos = Victor(problem.x, problem.y);
+  let dist = userPos.distance(problemPos);
+  if (dist < problem.r) {
+    let diff = userPos.subtract(problemPos).normalize();
+    // Add the difference to the problem
+    // NOTE: this is where normalization will happen
+    let newProblemPos = {x: problem.x + diff.x, y: problem.y + diff.y} 
+    problems.update({_id: problem._id}, {$set: newProblemPos});
+  } 
+}
+
+const checkProblem = function(event) {
+  let prob = problems.findOne({}); 
+  let goal = goals.findOne({}); 
+  let probPos = Victor(prob.x, prob.y);
+  let goalPos = Victor(goal.x, goal.y);
+  let dist = goalPos.distance(probPos);
+  if (dist <= goal.r) {
+    alert('SUCCESS!')
+  }
 }
 
 class Canvas {
   constructor() {
     this.svg = this.createSvg();
-    this.addUser();
   }
 
   createSvg() {
@@ -78,24 +118,61 @@ class Canvas {
         .attr('width', '100%')
         .attr('height', '100%')
   }
- 
-  addUser() {
-    d3.select('svg').append('circle')
-        .attr('r', 10)
-        .attr('cx', 100)
-        .attr('cy', 100)
-        .style('fill', 'steelblue')
-        .style('opacity', .3)
-  }
 
   clear() {
     d3.select('svg').remove();
     this.createSvg();
   }
 
+  drawGoal(data) {
+    let circles = d3.select('svg')
+        .selectAll('.goal')
+        .data(data)
+   
+    // Exit
+    circles.exit().remove();
+    
+    // Update 
+    circles
+      .attr('cx', (d) => { return d.x })
+      .attr('cy', (d) => { return d.y })
+      .style('stroke-width', 3)
+      
+    // Enter
+    circles.enter().append('circle')
+      .attr('class', 'goal')
+      .attr('r', (d) => { return d.r })
+      .attr('cx', (d) => { return d.x })
+      .attr('cy', (d) => { return d.y })
+      .style('fill', 'red')
+  }
+
+  drawProblem(data) {
+    let circles = d3.select('svg')
+        .selectAll('.problem')
+        .data(data)
+   
+    // Exit
+    circles.exit().remove();
+    
+    // Update 
+    circles
+      .attr('cx', (d) => { return d.x })
+      .attr('cy', (d) => { return d.y })
+      .style('stroke-width', 3)
+      
+    // Enter
+    circles.enter().append('circle')
+      .attr('class', 'problem')
+      .attr('r', (d) => { return d.r })
+      .attr('cx', (d) => { return d.x })
+      .attr('cy', (d) => { return d.y })
+      .style('fill', 'orange')
+  }
+
   draw(data) {
     let circles = d3.select('svg')
-        .selectAll('circle')
+        .selectAll('.user')
         .data(data.map((d) => {return d.state}))
    
     // Exit
@@ -106,7 +183,6 @@ class Canvas {
       .attr('cx', (d) => { return d.x })
       .attr('cy', (d) => { return d.y })
       .style('r', (d) => {
-        let r;
         d.c ? r = 13 : r = 10;
         return r
       })
@@ -114,6 +190,7 @@ class Canvas {
       
     // Enter
     circles.enter().append('circle')
+      .attr('class', 'user')
       .attr('r', 10)
       .attr('cx', (d) => { return d.x })
       .attr('cy', (d) => { return d.y })
