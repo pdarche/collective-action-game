@@ -1,0 +1,21 @@
+<head>
+  <title>qmss-thesis</title>
+</head>
+<head>
+    <title>QMSS Thesis</title>
+</head>
+
+<body>
+    {{> drawingSurface}}
+</body>
+
+<template name="drawingSurface">
+    <h1>{{title}}</h1>
+    <input class='clearButton' type='button' value='Clear'/>
+    <h2>Loading...</h2>
+    {{> canvas}}
+</template>
+
+<template name="canvas">
+    <div id='canvas'></div>
+</template>
