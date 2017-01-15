@@ -1,7 +1,33 @@
 /* CSS declarations go here */
+body {
+ margin: 0px;
+ padding: 0px;
+}
+
+#contribution-container {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  height: 40px;
+  width: 100%;
+  border-bottom: 1px solid #ccc;
+}
+
+#amount-remaining {
+  margin-right: 20px;
+}
+
+.contribution-bar {
+  width: 500px;
+  border: 1px solid #aaa;
+  padding: 0px;
+}
+
 #canvas {
   position: absolute;
-  top: 0px;
+  top: 60px;
   width: 100%;
   height: 100%;
 }
@@ -12,6 +38,3 @@ input {
   z-index: 10;
 }
 
-circle {
-  fill: 'steelblue'
-}

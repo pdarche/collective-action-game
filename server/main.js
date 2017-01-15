@@ -23,7 +23,7 @@ Meteor.publish('problemsSubscription', () => {
 
 Meteor.onConnection((conn) => {
   // Add the user when the connection opens
-  users.insert({id: conn.id, state: {x: 100, y: 100, u: conn.id}});
+  users.insert({id: conn.id, state: {x: 100, y: 100, u: conn.id, m: 5}});
   // Remove the user when the conection closes
   conn.onClose(() => {
     users.remove({id: conn.id})
@@ -33,7 +33,6 @@ Meteor.onConnection((conn) => {
 Meteor.methods({
   'clear': () => { 
     points.remove({});
-    console.log('clearing')
   },
   'getSessionId': () => {
     return Meteor.status()

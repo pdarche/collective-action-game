@@ -56,13 +56,51 @@ Template.canvas.events({
   }
 });
 
-Template.drawingSurface.events({
-  'click input': (event) => {
-    Meteor.call('clear', () => {
-      // canvas.clear();
-    });
+
+Template.contribution.rendered = (event) => {
+  createStatusBar()
+  updateStatusBar(5)
+}
+
+Template.contribution.helpers({
+  'remaining': function() {
+    return Session.get('remaining')
   }
 });
+
+const scale = d3.scaleLinear()
+   .domain([0, 5])
+   .range([0, 500])
+
+const createStatusBar = () => {
+  d3.select('#contribution-bar').append('svg')
+    .attr('class', 'contribution-bar')
+    .attr('width', '100%')
+    .attr('height', '15px')
+}
+
+const updateStatusBar = (value) => {
+  let bar = d3.select('.contribution-bar')
+    .selectAll('rect')
+    .data([value])
+
+  // Exit
+  bar.exit().remove();
+
+  // Update
+  bar.attr('width', d => scale(d))
+
+  // Enter 
+  bar.enter().append('rect')
+    .attr('class', 'bar')
+    .attr('x', 0)
+    .attr('y', 0)
+    .attr('height', 15)
+    .attr('width', 500)
+    .style('fill', 'steelblue')
+}
+
+const f = d3.format('.2f')
 
 const markPoint = function() {
   let offset = $('#canvas').offset();
@@ -73,7 +111,14 @@ const markPoint = function() {
     x: (event.pageX - offset.left),
     y: (event.pageY - offset.top),
     dt: new Date(),
-    c: Session.get('draw')
+    c: Session.get('draw'),
+    m: user.state.m
+  }
+  // TODO: refactor. this is being checked above
+  if (state.c && state.m > 0) { 
+      state.m = f(user.state.m - .02)
+      updateStatusBar(state.m)
+      Session.set('remaining', state.m)
   }
   users.update({_id: user._id}, {$set: {state: state}});
   points.insert(state);
@@ -105,6 +150,7 @@ const checkProblem = function(event) {
   let dist = goalPos.distance(probPos);
   if (dist <= goal.r) {
     alert('SUCCESS!')
+    // Add end of game logic here
   }
 }
 
@@ -115,17 +161,18 @@ class Canvas {
 
   createSvg() {
     return d3.select('#canvas').append('svg')
+        .attr('class', 'canvas')
         .attr('width', '100%')
         .attr('height', '100%')
   }
 
   clear() {
-    d3.select('svg').remove();
+    d3.select('.canvas').remove();
     this.createSvg();
   }
 
   drawGoal(data) {
-    let circles = d3.select('svg')
+    let circles = d3.select('.canvas')
         .selectAll('.goal')
         .data(data)
    
@@ -148,7 +195,7 @@ class Canvas {
   }
 
   drawProblem(data) {
-    let circles = d3.select('svg')
+    let circles = d3.select('.canvas')
         .selectAll('.problem')
         .data(data)
    
@@ -171,7 +218,7 @@ class Canvas {
   }
 
   draw(data) {
-    let circles = d3.select('svg')
+    let circles = d3.select('.canvas')
         .selectAll('.user')
         .data(data.map((d) => {return d.state}))
    
